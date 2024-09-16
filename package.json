@@ -1,0 +1,55 @@
+{
+  "name": "vimdexcards",
+  "version": "0.0.1",
+  "description": "Modular notes with Vim.",
+  "main": "vimdexcards.sh",
+  "files": [
+    "/vimdexcards.sh",
+    "/man"
+  ],
+  "man": [
+    "./man/vimdexcards.1"
+  ],
+  "scripts": {
+    "lint": "shellcheck vimdexcards.sh",
+    "test": "npm run -s lint && time bats --jobs 16 --no-parallelize-across-files test.bats",
+    "testf": "run() { npm run -s lint && bats -f \"$@\" test.bats; }; run",
+    "testi": "run() { npm run -s lint && bats -f \" $( cat test.bats | grep @test | cut -d' ' -f3- | head -$1 | tail -1 | sed 's/\" {$//' )$\" test.bats; }; run",
+    "testw": "run() { npm run -s test; fswatch -0 -o -r . | xargs -0 -n1 npm run test; }; run",
+    "testnw": "run() { npm run -s testn; fswatch -0 -o -r . | xargs -0 -n1 npm run testn; }; run",
+    "testfw": "run() { npm run -s testf \"$@\"; fswatch -0 -o -r . | xargs -0 -n1 npm run testf \"$@\"; }; run",
+    "testiw": "run() { npm run -s testi \"$@\"; fswatch -0 -o -r . | xargs -0 -n1 npm run testi \"$@\"; }; run",
+    "simulate": "./simulator",
+    "man": "sed '1,/^Usage$/d' README.md | sed '1s/^/DESCRIPTION\\nBasic usage:\\n/' | marked-man --name=vimdexcards | tr '\\n' '\\r' | sed -E 's/\\([^\\)]*\\)//g' | tr '\\r' '\\n' > ./man/vimdexcards.1",
+    "release": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz && echo $'\n'\"Press ENTER to publish the files above · CTRL+C to cancel · node $( node -v ) · npm $( npm -v )\"$'\n\n' && head -n 1 >/dev/null && npm publish",
+    "releasenext": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz && echo $'\n'\"Press ENTER to publish the files above (tag=next) · CTRL+C to cancel · node $( node -v ) · npm $( npm -v )\"$'\n\n' && head -n 1 >/dev/null && npm publish --tag next",
+    "tf": "npm run -s testf",
+    "ti": "npm run -s testi",
+    "tn": "npm run -s testn",
+    "tw": "npm run -s testw",
+    "tnw": "npm run -s testnw",
+    "tfw": "npm run -s testfw",
+    "tiw": "npm run -s testiw",
+    "s": "npm run -s simulate"
+  },
+  "bin": {
+    "cards": "vimdexcards.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evnp/vimdexcards.git"
+  },
+  "homepage": "https://github.com/evnp/vimdexcards",
+  "author": "Evan Purcer <ep@e2.gg> (https://e2.gg)",
+  "license": "MIT",
+  "devDependencies": {
+    "bats": "1.11.0",
+    "bats-assert": "2.0.0",
+    "bats-support": "git+https://github.com/ztombol/bats-support.git#v0.2.0",
+    "marked-man": "2.1.0",
+    "shellcheck": "3.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  }
+}
