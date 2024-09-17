@@ -3,20 +3,20 @@
 # vimdexcards · v0.0.1
 
 function cards() ( set -euo pipefail
-	local args='' panes=0 directory='' tmex_args=() vim_cmd=''
-	local name='' width=0 extension='' tmex_cmds=() print=FALSE
+	local args='' panes=0 directory='' tmex_args=() editor=''
+	local name='' width=0 extension='' tmex_cmds=() editor_args='' print=FALSE
 
 	args=" $* "
 	panes=9
 	directory='notes'
 	extension='.card.md'
-	vim_cmd="set cmdheight=0 laststatus=0"
+	editor="${EDITOR:-vim}"
 
 	# Parse environment variablejs:
 	[[ -n "${VIMDEXCARDS_DIRECTORY:-}" ]] && directory="${VIMDEXCARDS_DIRECTORY}"
 	[[ -n "${VIMDEXCARDS_EXTENSION:-}" ]] && extension="${VIMDEXCARDS_EXTENSION}"
-	[[ -n "${VIMDEXCARDS_VIM_COMMAND:-}" ]] && vim_cmd="${VIMDEXCARDS_VIM_COMMAND}"
-
+	[[ -n "${VIMDEXCARDS_EDITOR:-}" ]] && editor="${VIMDEXCARDS_EDITOR}"
+	[[ -n "${VIMDEXCARDS_EDITOR_ARGS:-}" ]] && editor_args="${VIMDEXCARDS_EDITOR_ARGS}"
 
 	# Parse arguments:
 	if [[ "${args}" == *' --print-tmux-command '* ]]
@@ -36,10 +36,20 @@ function cards() ( set -euo pipefail
 	fi
 	args="${args## }" # trim leading space
 	args="${args%% }" # trim trailing space
-	# Use all remaining arguments as vim command(s):
+	# Pass on all remaining arguments as editor arguments:
 	if [[ -n "${args}" ]]
 	then
-		vim_cmd="${args}"
+		editor_args="${args}"
+	fi
+
+	# Set default arguments for specific editors:
+	if [[ -z "${editor_args}" ]]
+	then
+		if [[ "${editor}" == 'vim' || "${editor}" == 'nvim' ]]
+		then
+			editor_args="-c 'set cmdheight=0 laststatus=0'"
+		fi
+		# FUTURE: Add default args for other editors here.
 	fi
 
 	# 1/3 current terminal width in columns (minus 4 columns for pane/editor margins):
@@ -69,17 +79,19 @@ function cards() ( set -euo pipefail
 		done
 	fi
 
-	# Construct tmex commands (with vim invocation) from each card file:
+	editor_args="$( echo "${editor_args}" | tr '"' "'" )"
+
+	# Construct tmex commands (with editor invocation) from each card file:
 	mapfile -t tmex_cmds < <(
 		find . -maxdepth 1 -name "*${extension}" -exec sh -c "echo \"\$1\" \
-		| sed 's/^/vim -c \"${vim_cmd}\" /'" shell {} \; \
+		| sed \"s/^/${editor} ${editor_args} /\"" shell {} \; \
 		| head "-${panes}"
 	)
 
-	# If there aren't enough cards, open empty vim buffers in remaining panes:
+	# If there aren't enough cards, open empty editor panes for remainder of grid:
 	while (( ${#tmex_cmds[@]} < panes ))
 	do
-		tmex_cmds+=( "vim -c '${vim_cmd}'" )
+		tmex_cmds+=( "${editor} ${editor_args}" )
 	done
 
 	# Prepare tmex arguments, starting with session name:
