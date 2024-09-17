@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# vimdexcards · v0.0.1
+# notegrid · v0.0.1
 
-function cards() ( set -euo pipefail
+function ng() ( set -euo pipefail
 	local args='' panes=0 directory='' tmex_args=() editor=''
 	local name='' width=0 extension='' tmex_cmds=() editor_args='' print=FALSE
 
@@ -13,10 +13,10 @@ function cards() ( set -euo pipefail
 	editor="${EDITOR:-vim}"
 
 	# Parse environment variablejs:
-	[[ -n "${VIMDEXCARDS_DIRECTORY:-}" ]] && directory="${VIMDEXCARDS_DIRECTORY}"
-	[[ -n "${VIMDEXCARDS_EXTENSION:-}" ]] && extension="${VIMDEXCARDS_EXTENSION}"
-	[[ -n "${VIMDEXCARDS_EDITOR:-}" ]] && editor="${VIMDEXCARDS_EDITOR}"
-	[[ -n "${VIMDEXCARDS_EDITOR_ARGS:-}" ]] && editor_args="${VIMDEXCARDS_EDITOR_ARGS}"
+	[[ -n "${NOTEGRID_DIRECTORY:-}" ]] && directory="${NOTEGRID_DIRECTORY}"
+	[[ -n "${NOTEGRID_EXTENSION:-}" ]] && extension="${NOTEGRID_EXTENSION}"
+	[[ -n "${NOTEGRID_EDITOR:-}" ]] && editor="${NOTEGRID_EDITOR}"
+	[[ -n "${NOTEGRID_EDITOR_ARGS:-}" ]] && editor_args="${NOTEGRID_EDITOR_ARGS}"
 
 	# Parse arguments:
 	if [[ "${args}" == *' --print-tmux-command '* ]]
@@ -108,5 +108,5 @@ function cards() ( set -euo pipefail
 # Only execute main function if script isn't being sourced:
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]
 then
-	cards "$@"
+	ng "$@"
 fi

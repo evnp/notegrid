@@ -7,7 +7,7 @@ function run_test_command() {
 	local cmd
 	cmd="${BATS_TEST_DESCRIPTION}"
 	cmd="${cmd/${BATS_TEST_NUMBER} /}"
-	cmd="${cmd/cards/${BATS_TEST_DIRNAME}/vimdexcards.sh}"
+	cmd="${cmd/cards/${BATS_TEST_DIRNAME}/notegrid.sh}"
 	if [[ "${cmd}" =~ ^([A-Z_]+=[^ ]*) ]]; then
 		# handle env var declarations placed before test command
 		export "${BASH_REMATCH[1]}"

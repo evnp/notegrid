@@ -1,0 +1,72 @@
+.TH "NOTEGRID" "1" "September 2024"
+.SH "NAME"
+\fBnotegrid\fR
+.SH DESCRIPTION
+.br
+Basic usage:
+.P
+Work in progress\.
+.SH Install
+.P
+Homebrew:
+.RS 2
+.nf
+brew tap evnp/notegrid && brew install notegrid
+.fi
+.RE
+.P
+NPM:
+.RS 2
+.nf
+npm install \-g notegrid
+.fi
+.RE
+.P
+Curl:
+.RS 2
+.nf
+read \-rp $'\\n'"Current directories in \\$PATH:"$'\\n'"$(echo $PATH|sed 's/:/\\n/g'|sort)"$'\\n\\n'"Enter a directory from the list above: " && [[ \-z "${REPLY}" ]] && echo "Cancelled " || ( curl \-L \-o "${REPLY/\\~/$HOME}/notegrid" https://github\.com/evnp/notegrid/raw/main/notegrid && chmod +x "${REPLY/\\~/$HOME}/notegrid" )
+.fi
+.RE
+.P
+notegrid has no external dependencies, but it's good practice to audit code before downnotegrid onto your system to ensure it contains nothing unexpected\. Please view the full source code for notegrid here: https://github.com/evnp/notegrid/blob/master/notegrid
+.P
+If you also want to install notegrid's man page:
+.RS 2
+.nf
+read \-rp $'\\n'"Current directories in \\$:"$'\\n'"$(manpath|sed 's/:/\\n/g'|sort)"$'\\n\\n'"Enter a directory from the list above: " && [[ \-z "${REPLY}" ]] && echo "Cancelled " || curl \-L \-o "${REPLY/\\~/$HOME}/man1/notegrid\.1" https://github\.com/evnp/notegrid/raw/main/man/notegrid\.1
+.fi
+.RE
+.P
+Verify installation:
+.RS 2
+.nf
+notegrid \-v
+==> notegrid 2\.0\.2
+
+brew test notegrid
+==> Testing notegrid
+==> /opt/homebrew/Cellar/notegrid/2\.0\.2/bin/notegrid test \-\-print 1234 hello world
+.fi
+.RE
+.SH Tests
+.P
+Run once:
+.RS 2
+.nf
+npm install
+npm test
+.fi
+.RE
+.P
+Use \fBfswatch\fP to re\-run tests on file changes:
+.RS 2
+.nf
+brew install fswatch
+npm install
+npm run testw
+.fi
+.RE
+.P
+Non\-OSX: replace \fBbrew install fswatch\fP with package manager of choice 
+

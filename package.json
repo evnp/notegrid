@@ -1,17 +1,17 @@
 {
-  "name": "vimdexcards",
+  "name": "notegrid",
   "version": "0.0.1",
-  "description": "Modular notes with Vim.",
-  "main": "vimdexcards.sh",
+  "description": "Modular notes.",
+  "main": "notegrid.sh",
   "files": [
-    "/vimdexcards.sh",
+    "/notegrid.sh",
     "/man"
   ],
   "man": [
-    "./man/vimdexcards.1"
+    "./man/notegrid.1"
   ],
   "scripts": {
-    "lint": "shellcheck vimdexcards.sh",
+    "lint": "shellcheck notegrid.sh",
     "test": "npm run -s lint && time bats --jobs 16 --no-parallelize-across-files test.bats",
     "testf": "run() { npm run -s lint && bats -f \"$@\" test.bats; }; run",
     "testi": "run() { npm run -s lint && bats -f \" $( cat test.bats | grep @test | cut -d' ' -f3- | head -$1 | tail -1 | sed 's/\" {$//' )$\" test.bats; }; run",
@@ -20,7 +20,7 @@
     "testfw": "run() { npm run -s testf \"$@\"; fswatch -0 -o -r . | xargs -0 -n1 npm run testf \"$@\"; }; run",
     "testiw": "run() { npm run -s testi \"$@\"; fswatch -0 -o -r . | xargs -0 -n1 npm run testi \"$@\"; }; run",
     "simulate": "./simulator",
-    "man": "sed '1,/^Usage$/d' README.md | sed '1s/^/DESCRIPTION\\nBasic usage:\\n/' | marked-man --name=vimdexcards | tr '\\n' '\\r' | sed -E 's/\\([^\\)]*\\)//g' | tr '\\r' '\\n' > ./man/vimdexcards.1",
+    "man": "sed '1,/^Usage$/d' README.md | sed '1s/^/DESCRIPTION\\nBasic usage:\\n/' | marked-man --name=notegrid | tr '\\n' '\\r' | sed -E 's/\\([^\\)]*\\)//g' | tr '\\r' '\\n' > ./man/notegrid.1",
     "release": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz && echo $'\n'\"Press ENTER to publish the files above · CTRL+C to cancel · node $( node -v ) · npm $( npm -v )\"$'\n\n' && head -n 1 >/dev/null && npm publish",
     "releasenext": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz && echo $'\n'\"Press ENTER to publish the files above (tag=next) · CTRL+C to cancel · node $( node -v ) · npm $( npm -v )\"$'\n\n' && head -n 1 >/dev/null && npm publish --tag next",
     "tf": "npm run -s testf",
@@ -33,13 +33,13 @@
     "s": "npm run -s simulate"
   },
   "bin": {
-    "cards": "vimdexcards.sh"
+    "cards": "notegrid.sh"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/evnp/vimdexcards.git"
+    "url": "https://github.com/evnp/notegrid.git"
   },
-  "homepage": "https://github.com/evnp/vimdexcards",
+  "homepage": "https://github.com/evnp/notegrid",
   "author": "Evan Purcer <ep@e2.gg> (https://e2.gg)",
   "license": "MIT",
   "devDependencies": {
