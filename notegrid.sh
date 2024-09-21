@@ -59,7 +59,14 @@ function ng() ( set -euo pipefail
 	fi
 
 	# 1/3 current terminal width in columns (minus 4 columns for pane/editor margins):
-	width="$(( $( tput cols ) / 3 - 4 ))"
+	width="$(( $( tput cols ) / $(
+		echo "${panes}" | awk '{print sqrt($1)%1 ? int(sqrt($1)+1) : sqrt($1)}'
+	) - 4 ))"
+
+	if (( width < 3 ))
+	then
+		width=3
+	fi
 
 	if [[ "$( basename "$PWD" )" != "${dir_prefix}${directory}" ]]
 	then
@@ -69,8 +76,13 @@ function ng() ( set -euo pipefail
 
 	if [[ -n "$( find . -maxdepth 1 -name "*${extension}" -print -quit 2>/dev/null )" ]]
 	then
-		# If card files already exist, synchronise file names with card title lines:
-		find . -maxdepth 1 -name "*${extension}" -exec sh -c "head -1 \"\$1\" \
+		# If card files already exist, make two updates to card files:
+		# - Update length of second line of each card to match current grid column width.
+		# - Synchronise file names with card title lines.
+		find . -maxdepth 1 -name "*${extension}" \
+		-exec sh -c "\
+		perl -pi -e 's/.*/$( printf "%${width}s" | tr ' ' '-' )/ if $. == 2' \"\$1\"; \
+		head -1 \"\$1\" \
 		| tr -sc '[:alnum:]' '-' \
 		| tr '[:upper:]' '[:lower:]' \
 		| sed -E 's/(^-|-$)//g' \
