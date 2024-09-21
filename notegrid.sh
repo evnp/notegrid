@@ -3,44 +3,50 @@
 # notegrid · v0.0.1
 
 function ng() ( set -euo pipefail
-	local args='' panes=0 directory='' tmex_args=() editor=''
-	local name='' width=0 extension='' tmex_cmds=() editor_args='' print=FALSE
+	local panes=0 directory='' tmex_args=() editor='' dir_prefix='' name=''
+	local width=0 extension='' tmex_cmds=() editor_args='' print=FALSE
 
-	args=" $* "
 	panes=9
 	directory='notes'
+	dir_prefix='.'
 	extension='.card.md'
 	editor="${EDITOR:-vim}"
 
 	# Parse environment variablejs:
+	[[ -n "${NOTEGRID_PANES:-}" ]] && panes="${NOTEGRID_PANES}"
 	[[ -n "${NOTEGRID_DIRECTORY:-}" ]] && directory="${NOTEGRID_DIRECTORY}"
+	[[ -n "${NOTEGRID_DIRECTORY_NOT_HIDDEN:-}" ]] && dir_prefix=''
 	[[ -n "${NOTEGRID_EXTENSION:-}" ]] && extension="${NOTEGRID_EXTENSION}"
 	[[ -n "${NOTEGRID_EDITOR:-}" ]] && editor="${NOTEGRID_EDITOR}"
 	[[ -n "${NOTEGRID_EDITOR_ARGS:-}" ]] && editor_args="${NOTEGRID_EDITOR_ARGS}"
 
 	# Parse arguments:
-	if [[ "${args}" == *' --print-tmux-command '* ]]
-	then
-		print=TRUE
-		args="${args/--print-tmux-command /}"
-	fi
-	if [[ "${args}" =~ [[:space:]]([a-zA-Z0-9_-]+)[[:space:]] ]]
-	then
-		directory="${BASH_REMATCH[1]}"
-		args="${args/ ${directory}/}"
-	fi
-	if [[ "${args}" =~ [[:space:]]((\.[a-z]+)+)[[:space:]] ]]
-	then
-		extension="${BASH_REMATCH[1]}"
-		args="${args/ ${extension}/}"
-	fi
-	args="${args## }" # trim leading space
-	args="${args%% }" # trim trailing space
-	# Pass on all remaining arguments as editor arguments:
-	if [[ -n "${args}" ]]
-	then
-		editor_args="${args}"
-	fi
+	while (( $# ))
+	do
+		if [[ "$1" == '--print-tmux-command' ]]
+		then
+			print=TRUE
+			shift
+		elif [[ "$1" == '--directory-not-hidden' ]]
+		then
+			dir_prefix=''
+			shift
+		elif [[ "$1" =~ ^([0-9]+)$ ]]
+		then
+			panes="${BASH_REMATCH[1]}"
+			shift
+		elif [[ "$1" =~ ^([a-zA-Z0-9_-]+)$ ]]
+		then
+			directory="${BASH_REMATCH[1]}"
+			shift
+		elif [[ "$1" =~ ^((\.[a-z]+)+)$ ]]
+		then
+			extension="${BASH_REMATCH[1]}"
+			shift
+		else
+			break
+		fi
+	done
 
 	# Set default arguments for specific editors:
 	if [[ -z "${editor_args}" ]]
@@ -55,10 +61,10 @@ function ng() ( set -euo pipefail
 	# 1/3 current terminal width in columns (minus 4 columns for pane/editor margins):
 	width="$(( $( tput cols ) / 3 - 4 ))"
 
-	if [[ "$( basename "$PWD" )" != ".${directory}" ]]
+	if [[ "$( basename "$PWD" )" != "${dir_prefix}${directory}" ]]
 	then
-		! [[ -d "./.${directory}" ]] && mkdir ".${directory}"
-		cd ".${directory}"
+		! [[ -d "./${dir_prefix}${directory}" ]] && mkdir "${dir_prefix}${directory}"
+		cd "./${dir_prefix}${directory}"
 	fi
 
 	if [[ -n "$( find . -maxdepth 1 -name "*${extension}" -print -quit 2>/dev/null )" ]]
