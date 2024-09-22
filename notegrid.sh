@@ -2,7 +2,7 @@
 
 # notegrid · v0.0.1
 
-function ng-sync() {
+function ng-sync() (
 	local extension='' panes=0 title_line='' width='' name=''
 
 	extension="$1" # required
@@ -51,12 +51,58 @@ function ng-sync() {
 		# Otherwise, if no card files yet exist, create set of new ones with letter names:
 		for name in A B C D E F G H I
 		do
-			printf "${name}\n%${width}s\n\n" | tr ' ' '-' > "./${name}${extension}"
+			printf "${name}\n%${width}s\n\n" | tr ' ' '-' > \
+				"./$( echo "${name}" | tr '[:upper:]' '[:lower:]' )${extension}"
 		done
 	fi
 
-	# TODO add git-syncing operations here
-}
+	if [[ -n "${NOTEGRID_COLOCATE:-}" && -n "${NOTEGRID_GIT_ORIGIN:-}" ]]
+	then
+		echo "Error: Don't use both 'colocate' mode and Git-based syncing options at once."
+		exit 1
+	fi
+
+	if [[ -n "${NOTEGRID_GIT_ORIGIN:-}" ]]
+	then
+		# Navigate to $HOME/.notes directory:
+		while [[ "$( dirname "$PWD" )" != "$HOME" ]]
+		do
+			cd ..
+		done
+
+		if [[ "$( git rev-parse --is-inside-work-tree 2>/dev/null )" ]]
+		then
+			git pull origin main
+		else
+			# Initialize new repository if needed
+			git init
+			git remote add origin "$NOTEGRID_GIT_ORIGIN"
+
+			# Initialize new repository if needed
+			if [[ -n "${NOTEGRID_GIT_CRYPT_KEY_FILE:-}" ]]
+			then
+				git-crypt init
+				echo "*${extension} filter=git-crypt diff=git-crypt" > ./.gitattributes
+				if [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '/'* ]] \
+				|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '~'* ]] \
+				|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == "$HOME"* ]]
+				then
+					git-crypt export-key "$NOTEGRID_GIT_CRYPT_KEY_FILE"
+				else
+					git-crypt export-key "$HOME/$NOTEGRID_GIT_CRYPT_KEY_FILE"
+				fi
+			fi
+		fi
+
+		# Sync all changes via standard git operations:
+		if [[ -n "$( git status -s )" ]]
+		then
+			git add --all
+			git commit -m "$( date )"
+			git push origin main
+		fi
+	fi
+)
 
 function ng() ( set -euo pipefail
 	local tmex_args=() directory='' dir_prefix='' editor='' panes=0
@@ -66,7 +112,7 @@ function ng() ( set -euo pipefail
 	directory='notes'
 	dir_prefix='.'
 	extension='.card.md'
-	editor="${EDITOR:-vim}"
+	editor="${EDITOR:-vi}"
 
 	# Parse environment variablejs:
 	[[ -n "${NOTEGRID_PANES:-}" ]] && panes="${NOTEGRID_PANES}"
@@ -116,9 +162,12 @@ function ng() ( set -euo pipefail
 	# Set default arguments for specific editors:
 	if [[ -z "${editor_args}" ]]
 	then
-		if [[ "${editor}" == 'vim' || "${editor}" == 'nvim' ]]
+		if [[ "${editor}" == 'nvim' ]]
 		then
 			editor_args="-c 'set cmdheight=0 laststatus=0'"
+		elif [[ "${editor}" == 'vim' || "${editor}" == 'vi' ]]
+		then
+			editor_args="-c 'set cmdheight=1 laststatus=0'"
 		fi
 		# FUTURE: Add default args for other editors here.
 	fi
