@@ -3,8 +3,8 @@
 # notegrid · v0.0.1
 
 function ng() ( set -euo pipefail
-	local panes=0 directory='' tmex_args=() editor='' dir_prefix='' name=''
-	local width=0 extension='' tmex_cmds=() editor_args='' print=FALSE
+	local panes=0 directory='' tmex_args=() editor='' dir_prefix='' dir_path='' name=''
+	local width=0 extension='' tmex_cmds=() editor_args='' colocate=FALSE print=FALSE
 
 	panes=9
 	directory='notes'
@@ -14,6 +14,7 @@ function ng() ( set -euo pipefail
 
 	# Parse environment variablejs:
 	[[ -n "${NOTEGRID_PANES:-}" ]] && panes="${NOTEGRID_PANES}"
+	[[ -n "${NOTEGRID_COLOCATE:-}" ]] && colocate=TRUE
 	[[ -n "${NOTEGRID_DIRECTORY:-}" ]] && directory="${NOTEGRID_DIRECTORY}"
 	[[ -n "${NOTEGRID_DIRECTORY_NOT_HIDDEN:-}" ]] && dir_prefix=''
 	[[ -n "${NOTEGRID_EXTENSION:-}" ]] && extension="${NOTEGRID_EXTENSION}"
@@ -23,13 +24,17 @@ function ng() ( set -euo pipefail
 	# Parse arguments:
 	while (( $# ))
 	do
-		if [[ "$1" == '--print-tmux-command' ]]
+		if [[ "$1" == '--colocate' ]]
 		then
-			print=TRUE
+			colocate=TRUE
 			shift
 		elif [[ "$1" == '--directory-not-hidden' ]]
 		then
 			dir_prefix=''
+			shift
+		elif [[ "$1" == '--print-tmux-command' ]]
+		then
+			print=TRUE
 			shift
 		elif [[ "$1" =~ ^([0-9]+)$ ]]
 		then
@@ -73,11 +78,30 @@ function ng() ( set -euo pipefail
 		width=3
 	fi
 
-	if [[ "$( basename "$PWD" )" != "${dir_prefix}${directory}" ]]
+	# If --colocate or NOTEGRID_COLOCATE set, create notes dir and files "in situ"
+	# within the current directory, generally within a ".notes" hidden directory:
+	# (depending on specified directory name and hidden option)
+	if [[ "${colocate}" == TRUE ]]
 	then
-		! [[ -d "./${dir_prefix}${directory}" ]] && mkdir "${dir_prefix}${directory}"
-		cd "./${dir_prefix}${directory}"
+		dir_path="${dir_prefix}${directory}"
+	# Otherwise, create notes dir and files within universal $HOME/.notes directory:
+	# (depending on specified directory name and hidden option)
+	else
+		if [[ "$PWD/" == "$HOME/${dir_prefix}${directory}/"* ]]
+		then
+			# If already within $HOME/.notes (possibly in deeper dir), just use current dir:
+			dir_path="$PWD"
+		else
+			# Otherwise, construct path to notes directory from current dir path ($PWD):
+			dir_path="$HOME/${dir_prefix}${directory}${PWD/$HOME/}"
+		fi
 	fi
+	# Create directory if it doesn't exist yet:
+	# (using -p to create intermediate dirs if needed)
+	! [[ -d "${dir_path}" ]] && mkdir -p "${dir_path}"
+	# Navigate to directory:
+	# (whole script runs in subshell so this won't affect calling shell)
+	cd "${dir_path}"
 
 	if [[ -n "$( find . -maxdepth 1 -name "*${extension}" -print -quit 2>/dev/null )" ]]
 	then
