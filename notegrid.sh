@@ -58,11 +58,16 @@ function ng() ( set -euo pipefail
 		# FUTURE: Add default args for other editors here.
 	fi
 
-	# 1/3 current terminal width in columns (minus 4 columns for pane/editor margins):
-	width="$(( $( tput cols ) / $(
+	# Calculate optimal grid column width:
+	if [[ -n "$TERM" ]]
+	then
+		width="$( tput cols )"
+	else
+		width=90
+	fi
+	width="$(( width / $(
 		echo "${panes}" | awk '{print sqrt($1)%1 ? int(sqrt($1)+1) : sqrt($1)}'
 	) - 4 ))"
-
 	if (( width < 3 ))
 	then
 		width=3
