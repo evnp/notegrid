@@ -2,10 +2,66 @@
 
 # notegrid · v0.0.1
 
-function ng() ( set -euo pipefail
-	local panes=0 directory='' tmex_args=() editor='' dir_prefix='' dir_path='' name=''
-	local width=0 extension='' tmex_cmds=() editor_args='' colocate=FALSE print=FALSE
+function ng-sync() {
+	local extension='' panes=0 title_line='' width='' name=''
 
+	extension="$1" # required
+	shift
+
+	panes="${1:-}" # optional
+	shift
+
+	if (( panes > 0 ))
+	then
+		# Calculate optimal grid column width:
+		if [[ -n "$TERM" ]]
+		then
+			width="$( tput cols )"
+		else
+			width=90
+		fi
+		width="$(( width / $(
+			echo "${panes}" | awk '{print sqrt($1)%1 ? int(sqrt($1)+1) : sqrt($1)}'
+		) - 4 ))"
+		if (( width < 3 ))
+		then
+			width=3
+		fi
+		title_line="$( printf "%${width}s" | tr ' ' '-' )"
+	else
+		title_line="---"
+	fi
+
+	if [[ -n "$( find . -maxdepth 1 -name "*${extension}" -print -quit 2>/dev/null )" ]]
+	then
+		# If card files already exist, make two updates to card files:
+		# - Update length of second line of each card to match current grid column width.
+		# - Synchronise file names with card title lines.
+		find . -maxdepth 1 -name "*${extension}" \
+		-exec sh -c "\
+		perl -pi -e 's/.*/${title_line}/ if $. == 2' \"\$1\"; \
+		head -1 \"\$1\" \
+		| tr -sc '[:alnum:]' '-' \
+		| tr '[:upper:]' '[:lower:]' \
+		| sed -E 's/(^-|-$)//g' \
+		| awk NF \
+		| sed -E 's/$/${extension}/' \
+		| xargs mv \"\$1\"" shell {} \;
+	else
+		# Otherwise, if no card files yet exist, create set of new ones with letter names:
+		for name in A B C D E F G H I
+		do
+			printf "${name}\n%${width}s\n\n" | tr ' ' '-' > "./${name}${extension}"
+		done
+	fi
+
+	# TODO add git-syncing operations here
+}
+
+function ng() ( set -euo pipefail
+	local tmex_args=() directory='' dir_prefix='' editor='' panes=0
+	local tmex_cmds=() extension='' dir_path='' editor_args=''
+	local sync=FALSE colocate=FALSE print=FALSE
 	panes=9
 	directory='notes'
 	dir_prefix='.'
@@ -24,7 +80,11 @@ function ng() ( set -euo pipefail
 	# Parse arguments:
 	while (( $# ))
 	do
-		if [[ "$1" == '--colocate' ]]
+		if [[ "$1" == '--sync' ]]
+		then
+			sync=TRUE
+			shift
+		elif [[ "$1" == '--colocate' ]]
 		then
 			colocate=TRUE
 			shift
@@ -63,21 +123,6 @@ function ng() ( set -euo pipefail
 		# FUTURE: Add default args for other editors here.
 	fi
 
-	# Calculate optimal grid column width:
-	if [[ -n "$TERM" ]]
-	then
-		width="$( tput cols )"
-	else
-		width=90
-	fi
-	width="$(( width / $(
-		echo "${panes}" | awk '{print sqrt($1)%1 ? int(sqrt($1)+1) : sqrt($1)}'
-	) - 4 ))"
-	if (( width < 3 ))
-	then
-		width=3
-	fi
-
 	# If --colocate or NOTEGRID_COLOCATE set, create notes dir and files "in situ"
 	# within the current directory, generally within a ".notes" hidden directory:
 	# (depending on specified directory name and hidden option)
@@ -103,27 +148,12 @@ function ng() ( set -euo pipefail
 	# (whole script runs in subshell so this won't affect calling shell)
 	cd "${dir_path}"
 
-	if [[ -n "$( find . -maxdepth 1 -name "*${extension}" -print -quit 2>/dev/null )" ]]
+	ng-sync "${extension}" "${panes}"
+
+	# If --sync was set, then we're all done:
+	if [[ "${sync}" == TRUE ]]
 	then
-		# If card files already exist, make two updates to card files:
-		# - Update length of second line of each card to match current grid column width.
-		# - Synchronise file names with card title lines.
-		find . -maxdepth 1 -name "*${extension}" \
-		-exec sh -c "\
-		perl -pi -e 's/.*/$( printf "%${width}s" | tr ' ' '-' )/ if $. == 2' \"\$1\"; \
-		head -1 \"\$1\" \
-		| tr -sc '[:alnum:]' '-' \
-		| tr '[:upper:]' '[:lower:]' \
-		| sed -E 's/(^-|-$)//g' \
-		| awk NF \
-		| sed -E 's/$/${extension}/' \
-		| xargs mv \"\$1\"" shell {} \;
-	else
-		# Otherwise, if no card files yet exist, create set of new ones with letter names:
-		for name in A B C D E F G H I
-		do
-			printf "${name}\n%${width}s\n\n" | tr ' ' '-' > "./${name}${extension}"
-		done
+		exit 0
 	fi
 
 	editor_args="$( echo "${editor_args}" | tr '"' "'" )"
@@ -131,7 +161,7 @@ function ng() ( set -euo pipefail
 	# Construct tmex commands (with editor invocation) from each card file:
 	mapfile -t tmex_cmds < <(
 		find . -maxdepth 1 -name "*${extension}" -exec sh -c "echo \"\$1\" \
-		| sed \"s/^/${editor} ${editor_args} /\"" shell {} \; \
+		| sed \"s!.*!${editor} ${editor_args} '\$1'; ng --sync!\"" shell {} \; \
 		| head "-${panes}"
 	)
 
