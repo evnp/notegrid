@@ -3,7 +3,12 @@
 # notegrid · v0.0.1
 
 function ng-sync() (
-	local extension='' panes=0 title_line='' width='' name=''
+	local op='' extension='' panes=0 title_line='' width='' name=''
+
+	op="$1" # required
+	! [[ "${op}" == 'pull' || "${op}" == 'push' || "${op}" == 'sync' ]] \
+		&& echo "ng-sync: first argument must be 'pull' 'push' or 'sync'" && exit 1
+	shift
 
 	extension="$1" # required
 	shift
@@ -72,7 +77,10 @@ function ng-sync() (
 
 		if [[ "$( git rev-parse --is-inside-work-tree 2>/dev/null )" ]]
 		then
-			git pull origin main
+			if [[ "${op}" == 'pull' || "${op}" == 'sync' ]]
+			then
+				git pull origin main
+			fi
 		else
 			# Initialize new repository if needed
 			git init
@@ -94,9 +102,9 @@ function ng-sync() (
 			fi
 		fi
 
-		# Sync all changes via standard git operations:
-		if [[ -n "$( git status -s )" ]]
+		if [[ "${op}" == 'push' || "${op}" == 'sync' ]] && [[ -n "$( git status -s )" ]]
 		then
+			# Sync all changes via standard git operations:
 			git add --all
 			git commit -m "$( date )"
 			git push origin main
@@ -107,7 +115,7 @@ function ng-sync() (
 function ng() ( set -euo pipefail
 	local tmex_args=() directory='' dir_prefix='' editor='' panes=0
 	local tmex_cmds=() extension='' dir_path='' editor_args='' file=''
-	local sync=FALSE colocate=FALSE print=FALSE
+	local pull=FALSE push=FALSE sync=FALSE colocate=FALSE print=FALSE
 	panes=9
 	directory='notes'
 	dir_prefix='.'
@@ -126,7 +134,15 @@ function ng() ( set -euo pipefail
 	# Parse arguments:
 	while (( $# ))
 	do
-		if [[ "$1" == '--sync' ]]
+		if [[ "$1" == '--pull' ]]
+		then
+			pull=TRUE
+			shift
+		elif [[ "$1" == '--push' ]]
+		then
+			push=TRUE
+			shift
+		elif [[ "$1" == '--sync' ]]
 		then
 			sync=TRUE
 			shift
@@ -197,12 +213,20 @@ function ng() ( set -euo pipefail
 	# (whole script runs in subshell so this won't affect calling shell)
 	cd "${dir_path}"
 
-	ng-sync "${extension}" "${panes}"
-
-	# If --sync was set, then we're all done:
-	if [[ "${sync}" == TRUE ]]
+	if [[ "${pull}" == TRUE ]]
 	then
+		ng-sync pull "${extension}" "${panes}"
 		exit 0
+	elif [[ "${push}" == TRUE ]]
+	then
+		ng-sync push "${extension}" "${panes}"
+		exit 0
+	elif [[ "${sync}" == TRUE ]]
+	then
+		ng-sync sync "${extension}" "${panes}"
+		exit 0
+	else
+		ng-sync pull "${extension}" "${panes}"
 	fi
 
 	editor_args="$( echo "${editor_args}" | tr '"' "'" )"
@@ -210,7 +234,7 @@ function ng() ( set -euo pipefail
 	# Construct tmex commands (with editor invocation) from each card file:
 	for file in *${extension}
 	do
-		tmex_cmds+=( "${editor} ${editor_args} ${file}; ng --sync" )
+		tmex_cmds+=( "${editor} ${editor_args} ${file}; ng --push" )
 		(( ${#tmex_cmds[@]} >= panes )) && break  # one command for each pane and no more
 	done
 
