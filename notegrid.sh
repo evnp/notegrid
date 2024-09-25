@@ -106,7 +106,7 @@ function ng-sync() (
 
 function ng() ( set -euo pipefail
 	local tmex_args=() directory='' dir_prefix='' editor='' panes=0
-	local tmex_cmds=() extension='' dir_path='' editor_args=''
+	local tmex_cmds=() extension='' dir_path='' editor_args='' file=''
 	local sync=FALSE colocate=FALSE print=FALSE
 	panes=9
 	directory='notes'
@@ -208,11 +208,11 @@ function ng() ( set -euo pipefail
 	editor_args="$( echo "${editor_args}" | tr '"' "'" )"
 
 	# Construct tmex commands (with editor invocation) from each card file:
-	mapfile -t tmex_cmds < <(
-		find . -maxdepth 1 -name "*${extension}" -exec sh -c "echo \"\$1\" \
-		| sed \"s!.*!${editor} ${editor_args} '\$1'; ng --sync!\"" shell {} \; \
-		| head "-${panes}"
-	)
+	for file in *${extension}
+	do
+		tmex_cmds+=( "${editor} ${editor_args} ${file}; ng --sync" )
+		(( ${#tmex_cmds[@]} >= panes )) && break  # one command for each pane and no more
+	done
 
 	# If there aren't enough cards, open empty editor panes for remainder of grid:
 	while (( ${#tmex_cmds[@]} < panes ))
