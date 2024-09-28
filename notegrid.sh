@@ -116,20 +116,24 @@ function ng() ( set -euo pipefail
 	local tmex_args=() directory='' dir_prefix='' editor='' panes=0
 	local tmex_cmds=() extension='' dir_path='' editor_args='' file=''
 	local pull=FALSE push=FALSE sync=FALSE colocate=FALSE print=FALSE
+	local false_re=''
 	panes=9
 	directory='notes'
 	dir_prefix='.'
 	extension='.card.md'
 	editor="${EDITOR:-vi}"
 
-	# Parse environment variablejs:
-	[[ -n "${NOTEGRID_PANES:-}" ]] && panes="${NOTEGRID_PANES}"
-	[[ -n "${NOTEGRID_COLOCATE:-}" ]] && colocate=TRUE
-	[[ -n "${NOTEGRID_DIRECTORY:-}" ]] && directory="${NOTEGRID_DIRECTORY}"
-	[[ -n "${NOTEGRID_DIRECTORY_NOT_HIDDEN:-}" ]] && dir_prefix=''
+	# Parse environment variables:
+	shopt -s nocasematch
+	false_re='^(0|false|no|null|nil|none)?$'
+	[[ "${NOTEGRID_PANES:-}" =~ ^[0-9]+$ ]] && panes="${NOTEGRID_PANES}"
 	[[ -n "${NOTEGRID_EXTENSION:-}" ]] && extension="${NOTEGRID_EXTENSION}"
 	[[ -n "${NOTEGRID_EDITOR:-}" ]] && editor="${NOTEGRID_EDITOR}"
 	[[ -n "${NOTEGRID_EDITOR_ARGS:-}" ]] && editor_args="${NOTEGRID_EDITOR_ARGS}"
+	[[ -n "${NOTEGRID_DIRECTORY:-}" ]] && directory="${NOTEGRID_DIRECTORY}"
+	! [[ "${NOTEGRID_DIRECTORY_NOT_HIDDEN:-}" =~ ${false_re} ]] && dir_prefix=''
+	! [[ "${NOTEGRID_COLOCATE:-}" =~ ${false_re} ]] && colocate=TRUE
+	shopt -u nocasematch
 
 	# Parse arguments:
 	while (( $# ))
