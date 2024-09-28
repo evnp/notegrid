@@ -2,6 +2,20 @@
 
 # notegrid · v0.0.1
 
+function git-crypt-key-file-path() {
+	if [[ -z "$NOTEGRID_GIT_CRYPT_KEY_FILE" ]]
+	then
+		echo ''
+	elif [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '/'* ]] \
+		|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '~'* ]] \
+		|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == "$HOME"* ]]
+	then
+		echo "$NOTEGRID_GIT_CRYPT_KEY_FILE"
+	else
+		echo "$HOME/$NOTEGRID_GIT_CRYPT_KEY_FILE"
+	fi
+}
+
 function ng-sync() (
 	local op='' extension='' panes=0 title_line='' width='' name=''
 
@@ -75,36 +89,13 @@ function ng-sync() (
 			cd ..
 		done
 
-		if [[ "$( git rev-parse --is-inside-work-tree 2>/dev/null )" ]]
+		if [[ "${op}" == 'pull' || "${op}" == 'sync' ]]
 		then
-			if [[ "${op}" == 'pull' || "${op}" == 'sync' ]]
-			then
-				git pull origin main
-			fi
-		else
-			# Initialize new repository if needed
-			git init
-			git remote add origin "$NOTEGRID_GIT_ORIGIN"
-
-			# Initialize new repository if needed
-			if [[ -n "${NOTEGRID_GIT_CRYPT_KEY_FILE:-}" ]]
-			then
-				git-crypt init
-				echo "*${extension} filter=git-crypt diff=git-crypt" > ./.gitattributes
-				if [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '/'* ]] \
-				|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == '~'* ]] \
-				|| [[ "$NOTEGRID_GIT_CRYPT_KEY_FILE" == "$HOME"* ]]
-				then
-					git-crypt export-key "$NOTEGRID_GIT_CRYPT_KEY_FILE"
-				else
-					git-crypt export-key "$HOME/$NOTEGRID_GIT_CRYPT_KEY_FILE"
-				fi
-			fi
+			git pull origin main
 		fi
 
 		if [[ "${op}" == 'push' || "${op}" == 'sync' ]] && [[ -n "$( git status -s )" ]]
 		then
-			# Sync all changes via standard git operations:
 			git add --all
 			git commit -m "$( date )"
 			git push origin main
@@ -210,9 +201,46 @@ function ng() ( set -euo pipefail
 			dir_path="$HOME/${dir_prefix}${directory}${PWD/$HOME/}"
 		fi
 	fi
+
 	# Create directory if it doesn't exist yet:
-	# (using -p to create intermediate dirs if needed)
-	! [[ -d "${dir_path}" ]] && mkdir -p "${dir_path}"
+	if ! [[ -d "${dir_path}" ]]
+	then
+		if [[ "${colocate}" == FALSE && -n "${NOTEGRID_GIT_ORIGIN:-}" ]]
+		then
+			# If specified, clone notes repository:
+			cd "$( dirname "${dir_path}" )"
+			if git clone "$NOTEGRID_GIT_ORIGIN" "${dir_prefix}${directory}" 2>/dev/null
+			then
+				# If specified, decrypt notes repository:
+				if [[ -n "${NOTEGRID_GIT_CRYPT_KEY_FILE:-}" ]]
+				then
+					cd "${dir_path}"
+					git-crypt unlock "$( git-crypt-key-file-path )"
+				fi
+			fi
+		fi
+
+		# If directory still doesn't exist (repo wasn't cloned above), create it:
+		if ! [[ -d "${dir_path}" ]]
+			mkdir -p "${dir_path}"
+
+			# Initialize new repository if needed:
+			if [[ "${colocate}" == FALSE && -n "${NOTEGRID_GIT_ORIGIN:-}" ]]
+				cd "${dir_path}"
+
+				git init
+				git remote add origin "$NOTEGRID_GIT_ORIGIN"
+
+				if [[ -n "${NOTEGRID_GIT_CRYPT_KEY_FILE:-}" ]]
+				then
+					git-crypt init
+					echo "*${extension} filter=git-crypt diff=git-crypt" > ./.gitattributes
+					git-crypt export-key "$( git-crypt-key-file-path )"
+				fi
+			fi
+		fi
+	fi
+
 	# Navigate to directory:
 	# (whole script runs in subshell so this won't affect calling shell)
 	cd "${dir_path}"
